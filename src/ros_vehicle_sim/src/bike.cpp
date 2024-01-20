@@ -87,6 +87,10 @@ void DynamicBike::SetPos(double pos[2]) {
     state[3] = pos[1];
 }
 
+void DynamicBike::SetYaw(double yaw) {
+    state[4] = yaw;
+}
+
 void DynamicBike::SetTime(double new_time) {
     time = new_time;
 }

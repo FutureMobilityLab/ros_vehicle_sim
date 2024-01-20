@@ -32,6 +32,9 @@ class DynamicBike {
         // should be global y in meters.
         void SetPos(double pos[2]);
 
+        // Set yaw angle [rad].
+        void SetYaw(double yaw);
+
         // Set time.
         void SetTime(double new_time);
 
@@ -66,6 +69,6 @@ class DynamicBike {
         double inputs[2] = {0.0, 1.0};
         double state[5];
         double time;
-        double step_size = 1e-3;
+        double step_size = 1e-2;
 };
 #endif

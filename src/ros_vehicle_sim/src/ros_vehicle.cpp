@@ -1,6 +1,9 @@
 #include "ros/ros.h"
 #include "raptor_dbw_msgs/AcceleratorPedalCmd.h"
 #include "raptor_dbw_msgs/SteeringCmd.h"
+#include "raptor_dbw_msgs/MiscReport.h"
+#include "raptor_dbw_msgs/GearReport.h"
+#include "raptor_dbw_msgs/Gear.h"
 #include "nav_msgs/Odometry.h"
 #include "geometry_msgs/TransformStamped.h"
 
@@ -23,6 +26,8 @@ class DynamicBikeNode {
         ros::Subscriber steer_cmd_sub;
         ros::Subscriber acc_cmd_sub;
         ros::Publisher odom_pub;
+        ros::Publisher gear_report_pub;
+        ros::Publisher misc_report_pub;
         tf2_ros::TransformBroadcaster tf2_broadcaster;
         ros::Rate loop_rate = 50;
         double ros_time;
@@ -47,12 +52,21 @@ class DynamicBikeNode {
                 &DynamicBikeNode::accCallback, this);
 
             // Create publishers.
-            odom_pub = nh->advertise<nav_msgs::Odometry>("novatel/oem7/odom", 10);
+            odom_pub = nh->advertise<nav_msgs::Odometry>("novatel/oem7/odom", 1);
+            gear_report_pub = nh->advertise<raptor_dbw_msgs::GearReport>(
+                "/vehicle/gear_report", 10
+            );
+            misc_report_pub = nh->advertise<raptor_dbw_msgs::MiscReport>(
+                "/vehicle/misc_report", 10
+            );
 
             // Initialize vehicle time.
             ros_time = ros::Time::now().toSec();
             dynamic_bike.SetTime(ros_time);
             sim_time = dynamic_bike.GetTime();
+
+            // Initialize vehicle state.
+            dynamic_bike.SetYaw(-45 * 3.14 / 180.0); // 3.14 / 2.0
         }
 
         void steerCallback(const raptor_dbw_msgs::SteeringCmd& msg) {
@@ -121,10 +135,26 @@ class DynamicBikeNode {
                 odom.twist.twist.angular.z = dynamic_bike.GetYawRate();
                 
                 odom.pose.pose.position.x = pos[0];
-                odom.pose.pose.position.y = pos[0];
+                odom.pose.pose.position.y = pos[1];
                 odom.pose.pose.orientation = tf2::toMsg(q);
 
                 odom_pub.publish(odom);
+
+                // Publish misc report.
+                raptor_dbw_msgs::MiscReport misc_report_msg;
+                misc_report_msg.by_wire_ready = true;
+                misc_report_msg.drive_by_wire_enabled = true;
+                misc_report_msg.comms_fault = false;
+                misc_report_msg.general_actuator_fault = false;
+                misc_report_msg.general_driver_activity = false;
+
+                misc_report_pub.publish(misc_report_msg);
+
+                // Publish gear report.
+                raptor_dbw_msgs::GearReport gear_report_msg;
+                gear_report_msg.state.gear = raptor_dbw_msgs::Gear::DRIVE;
+
+                gear_report_pub.publish(gear_report_msg);
 
                 ////////////////////
                 // Wait.
