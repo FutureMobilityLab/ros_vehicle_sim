@@ -103,14 +103,23 @@ class DynamicBikeNode {
             // Publish topics.
             ////////////////////
 
-            // Get vehicle position and velocity.
+            // Get vehicle position.
             tf2::Quaternion q;
             q.setRPY(0.0, 0.0, dynamic_bike.GetYaw());
             q.normalize();
             double pos[2];
             dynamic_bike.GetPos(pos);
+
+            // Translate position from C.G. to rear axle.
+            pos[0] += -b*std::cos(dynamic_bike.GetYaw());
+            pos[1] += -b*std::sin(dynamic_bike.GetYaw());
+
+            // Get vehicle velocity.
             double pos_dt[2];
             dynamic_bike.GetPosDt(pos_dt);
+
+            // Translate velocity from C.G. to rear axle.
+            pos_dt[1] += -b*dynamic_bike.GetYawRate();
 
             // Publish the transform over tf.
             geometry_msgs::TransformStamped odom_trans;
