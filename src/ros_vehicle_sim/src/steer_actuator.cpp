@@ -5,28 +5,29 @@
 #include <iostream>
 
 SteerActuator::SteerActuator() {
-  steer_torque = 0.;
-  velocity = 5.0;
-  steer_whl_ang = 0.;
+  this->steer_torque = 0.;
+  this->velocity = 5.0;
+  this->steer_whl_ang = 0.;
 }
 
 void SteerActuator::Advance() {
   // Use euler integration to get next output.
   // x[k+1] = x[k] + dx[k]*dt
-  vector<double> dx = GetDerivative();
-  for (int i=0; i<dx.size(); i++) {
-    state[i] += dx[i] * step_size;
-  }
-  steer_whl_ang = 0.;
+  // y[k] = C*x[k] + D*u[k]
+  this->steer_whl_ang = 0.;
   for (int i=0; i<CBias.size(); i++) {
-    steer_whl_ang += CBias[i] * state[i];
-    steer_whl_ang += CCoeff[i] * velocity * state[i];
+    this->steer_whl_ang = (this->CBias[i] * this->state[i])
+      + (this->CCoeff[i] * this->velocity * this->state[i]);
   }
-  steer_whl_ang += D * steer_torque;
+  this->steer_whl_ang += D * this->steer_torque;
+  std::vector<double> dx = GetDerivative();
+  for (int i=0; i<dx.size(); i++) {
+    this->state[i] += dx[i] * this->step_size;
+  }
 }
 
-vector<double> SteerActuator::GetDerivative() {
-  vector<double> dx = {0., 0.};
+std::vector<double> SteerActuator::GetDerivative() {
+  std::vector<double> dx = {0., 0.};
   for (int i=0; i<ABias.size(); i++) {
     for (int j=0; j<ABias[i].size(); j++) {
       dx[i] = (ABias[i][j] * state[j]) 
@@ -37,11 +38,11 @@ vector<double> SteerActuator::GetDerivative() {
   return dx;
 }
 
-void SteerActuator::SetInputs(double steer_torque, double vel) {
-  steer_torque = steer_torque;
-  velocity = max(vel, 5.0);
+void SteerActuator::SetInputs(const double steer_torque, const double vel) {
+  this->steer_torque = steer_torque;
+  this->velocity = std::max(vel, 5.0);
 }
 
 double SteerActuator::GetOutputs() {
-  return steer_whl_ang;
+  return this->steer_whl_ang;
 }
