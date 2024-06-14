@@ -64,7 +64,7 @@ class DynamicBikeNode {
         misc_report_pub = nh->advertise<raptor_dbw_msgs::MiscReport>(
             "/vehicle/misc_report", 10
         );
-        steering_report_pub = nh->advertise<raptor_dbw_msgs:SteeringReport(
+        steering_report_pub = nh->advertise<raptor_dbw_msgs::SteeringReport>(
             "/vehicle/steering_report", 10
         );
 
@@ -94,7 +94,7 @@ class DynamicBikeNode {
             ////////////////////
             
             ros::spinOnce();
-            this->steer_actuator.SetInputs(this->steer_torque, this->speed_cmd);
+            this->steer_actuator.SetInputs(this->steer_torque_cmd, this->speed_cmd);
             this->steer_cmd = this->steer_actuator.GetOutputs();
             double inputs[2] = {this->steer_cmd, this->speed_cmd};
             this->dynamic_bike.SetInputs(inputs);
