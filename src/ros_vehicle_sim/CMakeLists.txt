@@ -128,6 +128,7 @@ include_directories(
 
 ## Declare a C++ library
 add_library(bike src/bike.cpp)
+add_library(steer_actuator src/steer_actuator.cpp)
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/ros_vehicle_sim.cpp
 # )
