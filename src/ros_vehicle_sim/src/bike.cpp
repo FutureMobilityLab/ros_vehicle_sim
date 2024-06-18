@@ -5,6 +5,7 @@
 #include <vector>
 #include <cmath>
 #include <string.h>
+#include <iostream>
 
 
 DynamicBike::DynamicBike( 
@@ -25,73 +26,99 @@ DynamicBike::DynamicBike(
 {
 }
 
-void DynamicBike::GetDerivative(double x[5], double u[2], double dx[5]) {
+std::vector<double> DynamicBike::GetDerivative() {
     // Compute tire forces with linear tire model.
-    double alphaF = u[0]/K - atan2(x[0] + a*x[1], u[1]);
-    double alphaR = -1*atan2(x[0] - b*x[1], u[1]);
+    // std::cout << "GetDerivative" << std::endl;
+    // for (int i=0; i<5;i++) {
+    //     std::cout << this->state[i] << ", ";
+    // }
+    // std::cout << std::endl;
+    double alphaF = this->inputs[0]/K - std::atan2(this->state[0] + a*this->state[1],
+        this->inputs[1]);
+    double alphaR = -1*std::atan2(this->state[0] - b*this->state[1], this->inputs[1]);
     double Fyf = Cf*alphaF;
     double Fyr = Cr*alphaR;
+    //std::cout << "Inputs" << std::endl;
+    //std::cout << this->inputs[0] << ", " << this->inputs[1] << std::endl;
+    //std::cout << alphaF << ", " << alphaR << ", " << Fyf << ", " << Fyr << std::endl;
 
     // Compute derivatives.
-    dx[0] = (Fyf*cos(u[0]/K) + Fyr) / m - u[1]*x[1];
+    std::vector<double> dx = {0, 0, 0, 0, 0};
+    dx[0] = (Fyf*cos(this->inputs[0]/K) + Fyr) / m - this->inputs[1]*this->state[1];
     dx[1] = (a*Fyf - b*Fyr) / J;
-    dx[2] = u[1]*cos(x[4]) - x[0]*sin(x[4]);
-    dx[3] = u[1]*sin(x[4]) + x[0]*cos(x[4]);
-    dx[4] = x[1];
+    dx[2] = this->inputs[1]*cos(this->state[4]) - this->state[0]*sin(this->state[4]);
+    dx[3] = this->inputs[1]*sin(this->state[4]) + this->state[0]*cos(this->state[4]);
+    dx[4] = this->state[1];
+    // std::cout << "Derivatives: " << std::endl;
+    // for (auto i: dx ) {
+    //     std::cout << i << ", ";
+    // }
+    // std::cout << std::endl;
+    return dx;
 }
+
+// void DynamicBike::Advance() {
+//     // Use Runge Kutta 4th Order where inputs are zero-order held.
+//     double k1[5], k2[5], k3[5], k4[5];
+
+//     // Compute K1.
+//     GetDerivative(state, inputs, k1);
+
+//     // Compute K2.
+//     double intermediate_state[5];
+//     for (int i = 0; i < 5; i++) {
+//         intermediate_state[i] = state[i] + step_size*k1[i]/2;
+//     }
+//     GetDerivative(intermediate_state, inputs, k2);
+
+//     // Compute K3.
+//     for (int i = 0; i < 5; i++) {
+//         intermediate_state[i] = state[i] + step_size*k2[i]/2;
+//     }
+//     GetDerivative(intermediate_state, inputs, k3);
+
+//     // Compute k4.
+//     for (int i = 0; i < 5; i++) {
+//         intermediate_state[i] = state[i] + step_size*k3[i];
+//     }
+//     GetDerivative(intermediate_state, inputs, k4);
+
+//     // Update state.
+//     for (int i = 0; i < 5; i++) {
+//         state[i] += (step_size/6) * (k1[i] + 2*k2[i] + 2*k3[i] + k4[i]);
+//     }
+//     time += step_size;
+// }
 
 void DynamicBike::Advance() {
-    // Use Runge Kutta 4th Order where inputs are zero-order held.
-    double k1[5], k2[5], k3[5], k4[5];
+    //double dx[5] = {0,0,0,0,0};
+    std::vector<double> dx = this->GetDerivative();
 
-    // Compute K1.
-    GetDerivative(state, inputs, k1);
-
-    // Compute K2.
-    double intermediate_state[5];
-    for (int i = 0; i < 5; i++) {
-        intermediate_state[i] = state[i] + step_size*k1[i]/2;
+    for (int i=0; i<5; i++) {
+        //std::cout << dx[i] << ": ";
+        this->state[i] += dx[i]*this->step_size;
+        //std::cout << this->state[i] << std::endl;
     }
-    GetDerivative(intermediate_state, inputs, k2);
-
-    // Compute K3.
-    for (int i = 0; i < 5; i++) {
-        intermediate_state[i] = state[i] + step_size*k2[i]/2;
-    }
-    GetDerivative(intermediate_state, inputs, k3);
-
-    // Compute k4.
-    for (int i = 0; i < 5; i++) {
-        intermediate_state[i] = state[i] + step_size*k3[i];
-    }
-    GetDerivative(intermediate_state, inputs, k4);
-
-    // Update state.
-    for (int i = 0; i < 5; i++) {
-        state[i] += (step_size/6) * (k1[i] + 2*k2[i] + 2*k3[i] + k4[i]);
-    }
-    time += step_size;
+    this->time += step_size;
+    //std::cout << "exiting Advance" << std::endl;
 }
 
-void DynamicBike::SetInputs(double u[2]) {
+void DynamicBike::SetInputs(const double u[2]) {
     // The tire model cannot model zero velocity behavior.
-    if ( u[1] < 1.0 ) {
-        u[1] = 1.0;
-    }
     inputs[0] = u[0];  // Steering wheel angle [rad].
-    inputs[1] = u[1];  // Longitudinal velocity [m/s].
+    inputs[1] = std::max(u[1], 1.0);  // Longitudinal velocity [m/s].
 }
 
-void DynamicBike::SetPos(double pos[2]) {
+void DynamicBike::SetPos(const double pos[2]) {
     state[2] = pos[0];
     state[3] = pos[1];
 }
 
-void DynamicBike::SetYaw(double yaw) {
+void DynamicBike::SetYaw(const double yaw) {
     state[4] = yaw;
 }
 
-void DynamicBike::SetTime(double new_time) {
+void DynamicBike::SetTime(const double new_time) {
     time = new_time;
 }
 
@@ -99,9 +126,10 @@ double DynamicBike::GetInputs(int input_num) {
     return inputs[input_num];
 }
 
-void DynamicBike::GetPos(double pos[2]) {
-    pos[0] = state[2]; // Global X position [m].
-    pos[1] = state[3]; // Global Y position [m].
+std::vector<double> DynamicBike::GetPos() {
+    return std::vector<double> {state[2], state[3]};
+    // pos[0] = state[2]; // Global X position [m].
+    // pos[1] = state[3]; // Global Y position [m].
 }
 
 double DynamicBike::GetYaw() {

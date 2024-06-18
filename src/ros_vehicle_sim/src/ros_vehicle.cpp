@@ -1,5 +1,6 @@
 #include "ros/ros.h"
 #include "raptor_dbw_msgs/AcceleratorPedalCmd.h"
+#include "raptor_dbw_msgs/ActuatorControlMode.h"
 #include "raptor_dbw_msgs/SteeringCmd.h"
 #include "raptor_dbw_msgs/SteeringReport.h"
 #include "raptor_dbw_msgs/MiscReport.h"
@@ -11,6 +12,8 @@
 #include <std_msgs/Int64.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_broadcaster.h>
+
+#include <iostream>
 
 #include "bike.h"
 #include "steer_actuator.h"
@@ -39,6 +42,7 @@ class DynamicBikeNode {
     double steer_cmd;
     double steer_torque_cmd;
     double speed_cmd;
+    raptor_dbw_msgs::ActuatorControlMode steer_control_type;
   public:
     DynamicBikeNode(ros::NodeHandle *nh) {
         // Initialize parameters.
@@ -74,12 +78,18 @@ class DynamicBikeNode {
         sim_time = dynamic_bike.GetTime();
 
         // Initialize vehicle state.
+        steer_cmd = 0;
+        steer_torque_cmd = 0;
+        speed_cmd = 0;
         dynamic_bike.SetYaw(-45 * 3.14 / 180.0); // 3.14 / 2.0
     }
 
     void steerCallback(const raptor_dbw_msgs::SteeringCmd& msg) {
+        //std::cout << "steerCallback" << std::endl;
         this->steer_cmd = msg.angle_cmd;
         this->steer_torque_cmd = msg.torque_cmd;
+        this->steer_control_type = msg.control_type;
+        //std::cout << this->steer_cmd << ", " << this->steer_torque_cmd << ", " << this->steer_control_type << std::endl;
     }
 
     void accCallback(const raptor_dbw_msgs::AcceleratorPedalCmd& msg) {
@@ -94,8 +104,10 @@ class DynamicBikeNode {
             ////////////////////
             
             ros::spinOnce();
-            this->steer_actuator.SetInputs(this->steer_torque_cmd, this->speed_cmd);
-            this->steer_cmd = this->steer_actuator.GetOutputs();
+            if (this->steer_control_type.value == raptor_dbw_msgs::ActuatorControlMode::open_loop) {
+                this->steer_actuator.SetInputs(this->steer_torque_cmd, this->speed_cmd);
+                this->steer_cmd = this->steer_actuator.GetOutputs();
+            }
             double inputs[2] = {this->steer_cmd, this->speed_cmd};
             this->dynamic_bike.SetInputs(inputs);
 
@@ -107,7 +119,8 @@ class DynamicBikeNode {
             sim_time = dynamic_bike.GetTime();
             while (sim_time < ros_time) {
                 dynamic_bike.Advance();
-                steer_actuator.Advance();
+                this->steer_actuator.Advance();
+                //std::cout << "Advanced actuator" << std::endl;
                 sim_time = dynamic_bike.GetTime();
             }
             
@@ -119,8 +132,8 @@ class DynamicBikeNode {
             tf2::Quaternion q;
             q.setRPY(0.0, 0.0, dynamic_bike.GetYaw());
             q.normalize();
-            double pos[2];
-            dynamic_bike.GetPos(pos);
+            std::vector<double> pos = dynamic_bike.GetPos();
+            //std::cout << pos[0] << ", " << pos[1] << std::endl;
 
             // Translate position from C.G. to rear axle.
             pos[0] += -b*std::cos(dynamic_bike.GetYaw());
@@ -163,6 +176,7 @@ class DynamicBikeNode {
 
             // Publish misc report.
             raptor_dbw_msgs::MiscReport misc_report_msg;
+            misc_report_msg.header.stamp = ros::Time(ros_time);
             misc_report_msg.by_wire_ready = true;
             misc_report_msg.drive_by_wire_enabled = true;
             misc_report_msg.comms_fault = false;
@@ -173,12 +187,14 @@ class DynamicBikeNode {
 
             // Publish gear report.
             raptor_dbw_msgs::GearReport gear_report_msg;
+            gear_report_msg.header.stamp = ros::Time(ros_time);
             gear_report_msg.state.gear = raptor_dbw_msgs::Gear::DRIVE;
 
             gear_report_pub.publish(gear_report_msg);
 
             // Publish steering report.
             raptor_dbw_msgs::SteeringReport steering_report_msg;
+            steering_report_msg.header.stamp = ros::Time(ros_time);
             steering_report_msg.steering_wheel_angle = this->steer_cmd;
 
             steering_report_pub.publish(steering_report_msg);
