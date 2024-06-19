@@ -17,7 +17,7 @@ void SteerActuator::Advance() {
   //std::cout << "SteerActuator::Advance()" << std::endl;
   this->steer_whl_ang = 0.;
   for (int i=0; i<CBias.size(); i++) {
-    this->steer_whl_ang = (this->CBias[i] * this->state[i])
+    this->steer_whl_ang += (this->CBias[i] * this->state[i])
       + (this->CCoeff[i] * this->velocity * this->state[i]);
   }
   this->steer_whl_ang += D * this->steer_torque;
@@ -33,10 +33,10 @@ std::vector<double> SteerActuator::GetDerivative() {
   std::vector<double> dx = {0., 0.};
   for (int i=0; i<ABias.size(); i++) {
     for (int j=0; j<ABias[i].size(); j++) {
-      dx[i] = (ABias[i][j] * state[j]) 
-        + (this->ACoeff[i][j] * this->velocity * this->state[j])
-        + (this->B[i] * this->steer_torque);
+      dx[i] += (ABias[i][j] * state[j]) 
+        + (this->ACoeff[i][j] * this->velocity * this->state[j]);
     }
+    dx[i] += (this->B[i] * this->steer_torque);
   }
   return dx;
 }

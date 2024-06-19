@@ -36,7 +36,7 @@ class DynamicBikeNode {
     ros::Publisher misc_report_pub;
     ros::Publisher steering_report_pub;
     tf2_ros::TransformBroadcaster tf2_broadcaster;
-    ros::Rate loop_rate = 50.0;
+    ros::Rate loop_rate = 200.0;
     double ros_time;
     double sim_time;
     double steer_cmd;
