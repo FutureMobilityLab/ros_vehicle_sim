@@ -81,7 +81,12 @@ class DynamicBikeNode {
         steer_cmd = 0;
         steer_torque_cmd = 0;
         speed_cmd = 0;
-        dynamic_bike.SetYaw(-45 * 3.14 / 180.0); // 3.14 / 2.0
+        dynamic_bike.SetYaw(0 * 3.14 / 180.0); // 3.14 / 2.0
+        const double pos[2] = {
+            b*std::cos(dynamic_bike.GetYaw()),
+            b*std::sin(dynamic_bike.GetYaw())
+        };
+        dynamic_bike.SetPos(pos);
     }
 
     void steerCallback(const raptor_dbw_msgs::SteeringCmd& msg) {
